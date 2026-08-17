@@ -1,0 +1,18 @@
+{
+  "name": "과학 학습 프로그램",
+  "short_name": "과학학습",
+  "description": "중학교 과학 문제를 풀며 개념을 익히는 학습 앱",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F1F8",
+  "theme_color": "#6C5CE7",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
