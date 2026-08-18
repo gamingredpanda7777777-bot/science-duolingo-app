@@ -10,13 +10,25 @@
    ============================================================ */
 
 import { supabase, syntheticEmail } from "./supabase.js";
-import { validateId, validatePassword, normalizeCode, formatCode } from "./accounts-shared.js";
+import {
+  validateId,
+  validatePassword,
+  validateEmail,
+  isRecoverableEmail,
+  normalizeCode,
+  formatCode,
+} from "./accounts-shared.js";
 
 export { formatCode, normalizeCode };
 
 function toAccount(row) {
   if (!row) return null;
-  return { code: row.code, id: row.username, createdAt: row.created_at };
+  return {
+    code: row.code,
+    id: row.username,
+    createdAt: row.created_at,
+    isAdmin: Boolean(row.is_admin),
+  };
 }
 
 /* 서버 오류 메시지를 사람이 읽을 수 있게 바꾼다 */
@@ -38,7 +50,7 @@ export async function getCurrentAccount() {
   if (!data?.user) return null;
   const { data: row } = await supabase
     .from("profiles")
-    .select("code, username, created_at")
+    .select("code, username, created_at, is_admin")
     .eq("user_id", data.user.id)
     .single();
   return toAccount(row);
@@ -46,13 +58,18 @@ export async function getCurrentAccount() {
 
 /* ---------- 가입 ---------- */
 
-export async function createAccount(id, password) {
+export async function createAccount(id, password, recoveryEmail) {
   const username = String(id || "").trim();
+  const email0 = String(recoveryEmail || "").trim();
 
   const idError = validateId(username);
   if (idError) return { error: idError };
   const pwError = validatePassword(password);
   if (pwError) return { error: pwError };
+  if (email0) {
+    const mailError = validateEmail(email0);
+    if (mailError) return { error: mailError };
+  }
 
   // 아이디 중복을 미리 확인 (가입 후 실패하면 계정만 남으므로)
   const { data: taken, error: checkError } = await supabase.rpc("username_taken", {
@@ -61,9 +78,10 @@ export async function createAccount(id, password) {
   if (checkError) return { error: friendly(checkError, "아이디를 확인하지 못했어요.") };
   if (taken) return { error: "이미 쓰고 있는 아이디예요." };
 
-  // 로그인용 내부 이메일. 아이디를 바꿔도 이 값은 그대로 유지된다.
+  // 이메일을 적었으면 그걸 로그인용으로 쓴다(비밀번호 찾기가 가능해진다).
+  // 안 적었으면 내부용 가짜 이메일을 만든다(비밀번호 찾기 불가).
   const seed = `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-  const email = syntheticEmail(seed);
+  const email = email0 || syntheticEmail(seed);
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
@@ -78,7 +96,7 @@ export async function createAccount(id, password) {
   const { data: row, error: profileError } = await supabase
     .from("profiles")
     .insert({ user_id: user.id, username, login_email: email })
-    .select("code, username, created_at")
+    .select("code, username, created_at, is_admin")
     .single();
 
   if (profileError) {
@@ -134,7 +152,7 @@ export async function changeId(code, newId) {
     .from("profiles")
     .update({ username })
     .eq("code", code)
-    .select("code, username, created_at")
+    .select("code, username, created_at, is_admin")
     .single();
 
   if (error) return { error: friendly(error, "아이디를 바꾸지 못했어요.") };
@@ -213,4 +231,147 @@ export async function pushProgress(progress) {
     { onConflict: "user_id" }
   );
   return !error;
+}
+
+/* ---------- 비밀번호 찾기 ---------- */
+
+/* 등록한 이메일로 재설정 링크를 보낸다.
+   계정이 있는지 없는지는 알려주지 않는다(남의 가입 여부를 캐낼 수 없게). */
+export async function requestPasswordReset(email) {
+  const value = String(email || "").trim();
+  const mailError = validateEmail(value);
+  if (mailError) return { error: mailError };
+
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(value, { redirectTo });
+
+  // 등록되지 않은 주소여도 똑같은 안내를 돌려준다
+  if (error && !/not found|invalid/i.test(String(error.message))) {
+    return { error: friendly(error, "메일을 보내지 못했어요.") };
+  }
+  return { sent: true };
+}
+
+/* 메일 링크를 타고 들어온 상태인지 확인한다 */
+export function isRecoveryLink() {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash || "";
+  const query = window.location.search || "";
+  return /type=recovery/.test(hash) || /type=recovery/.test(query);
+}
+
+/* 링크로 들어온 뒤 새 비밀번호를 저장한다 */
+export async function completePasswordReset(newPassword) {
+  const pwError = validatePassword(newPassword);
+  if (pwError) return { error: pwError };
+
+  const { data } = await supabase.auth.getUser();
+  if (!data?.user) {
+    return { error: "링크가 만료됐어요. 비밀번호 찾기를 다시 시도해 주세요." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return { error: friendly(error, "비밀번호를 바꾸지 못했어요.") };
+
+  // 주소창에 남은 토큰을 지운다
+  try {
+    window.history.replaceState({}, "", window.location.pathname);
+  } catch {
+    /* 무시 */
+  }
+  return { ok: true };
+}
+
+/* 지금 계정에 복구용 이메일이 등록돼 있는지 */
+export async function getRecoveryEmail() {
+  const { data } = await supabase.auth.getUser();
+  const email = data?.user?.email || null;
+  return isRecoverableEmail(email) ? email : null;
+}
+
+/* 이미 만든 계정에 복구용 이메일을 등록하거나 바꾼다 */
+export async function setRecoveryEmail(code, email) {
+  const value = String(email || "").trim();
+  const mailError = validateEmail(value);
+  if (mailError) return { error: mailError };
+
+  const { error } = await supabase.auth.updateUser({ email: value });
+  if (error) return { error: friendly(error, "이메일을 등록하지 못했어요.") };
+
+  // 로그인용 이메일도 같이 맞춰 둔다
+  await supabase.from("profiles").update({ login_email: value }).eq("code", code);
+  return { ok: true };
+}
+
+/* ---------- 관리자 기능 ----------
+   아래 함수들은 데이터베이스의 보안 정책이 최종 판단을 한다.
+   관리자가 아니면 서버가 빈 결과를 돌려주므로, 화면에서 숨기는 것만으로
+   막는 것이 아니라 실제로 접근이 차단된다. */
+
+/* 전체 사용자와 학습 기록을 함께 가져온다 */
+export async function fetchAllUsers() {
+  const { data: profiles, error: pErr } = await supabase
+    .from("profiles")
+    .select("code, username, created_at, is_admin, user_id")
+    .order("created_at", { ascending: true });
+
+  if (pErr) return { error: friendly(pErr, "사용자 목록을 불러오지 못했어요.") };
+
+  const { data: progressRows, error: gErr } = await supabase
+    .from("progress")
+    .select("user_id, xp, streak, last_study_date, completed_lessons, lesson_best");
+
+  if (gErr) return { error: friendly(gErr, "학습 기록을 불러오지 못했어요.") };
+
+  const byUser = {};
+  for (const row of progressRows || []) byUser[row.user_id] = row;
+
+  const users = (profiles || []).map((p) => {
+    const g = byUser[p.user_id] || {};
+    return {
+      code: p.code,
+      id: p.username,
+      isAdmin: Boolean(p.is_admin),
+      createdAt: p.created_at,
+      xp: g.xp ?? 0,
+      streak: g.streak ?? 0,
+      lastStudyDate: g.last_study_date ?? null,
+      completedLessons: Array.isArray(g.completed_lessons) ? g.completed_lessons : [],
+      lessonBest: g.lesson_best && typeof g.lesson_best === "object" ? g.lesson_best : {},
+    };
+  });
+
+  return { users };
+}
+
+/* 다른 사람의 학습 기록만 지운다 (계정은 남는다) */
+export async function adminResetProgress(code) {
+  const { data: row, error: findError } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("code", code)
+    .single();
+  if (findError || !row) return { error: "그 계정을 찾지 못했어요." };
+
+  const { error } = await supabase.from("progress").delete().eq("user_id", row.user_id);
+  if (error) return { error: friendly(error, "기록을 지우지 못했어요.") };
+  return { ok: true };
+}
+
+/* 다른 사람의 계정을 지운다.
+   브라우저에서는 로그인 정보 자체를 지울 수 없으므로 프로필과 기록만 지운다.
+   남은 로그인 정보는 Supabase 대시보드에서 정리해야 한다. */
+export async function adminDeleteUser(code) {
+  const { data: row, error: findError } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("code", code)
+    .single();
+  if (findError || !row) return { error: "그 계정을 찾지 못했어요." };
+
+  await supabase.from("progress").delete().eq("user_id", row.user_id);
+  const { error } = await supabase.from("profiles").delete().eq("code", code);
+  if (error) return { error: friendly(error, "계정을 지우지 못했어요.") };
+
+  return { ok: true, needsDashboardCleanup: true };
 }

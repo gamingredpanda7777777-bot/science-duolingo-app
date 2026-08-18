@@ -27,6 +27,18 @@ export const changeId = backend.changeId;
 export const changePassword = backend.changePassword;
 export const deleteAccount = backend.deleteAccount;
 
+/* 비밀번호 찾기 (로컬 모드에서는 안내만 돌려준다) */
+export const requestPasswordReset = backend.requestPasswordReset;
+export const isRecoveryLink = backend.isRecoveryLink;
+export const completePasswordReset = backend.completePasswordReset;
+export const getRecoveryEmail = backend.getRecoveryEmail;
+export const setRecoveryEmail = backend.setRecoveryEmail;
+
+/* 관리자 기능 (실제 권한 판단은 데이터베이스가 한다) */
+export const fetchAllUsers = backend.fetchAllUsers;
+export const adminResetProgress = backend.adminResetProgress;
+export const adminDeleteUser = backend.adminDeleteUser;
+
 /* 학습 기록 동기화 (로컬 모드에서는 아무것도 하지 않는다) */
 export const fetchProgress = backend.fetchProgress;
 export const pushProgress = backend.pushProgress;

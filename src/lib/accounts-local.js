@@ -197,3 +197,33 @@ export async function deleteAccount(code) {
   }
   setSession(null);
 }
+
+/* ---------- 비밀번호 찾기 (로컬 모드에서는 불가) ----------
+   메일을 보낼 서버가 없으므로 기능을 제공하지 않는다.
+   화면 쪽에서 서버 모드일 때만 버튼을 보여준다. */
+export async function requestPasswordReset() {
+  return { error: "이 기기 저장 모드에서는 비밀번호 찾기를 쓸 수 없어요." };
+}
+export function isRecoveryLink() {
+  return false;
+}
+export async function completePasswordReset() {
+  return { error: "이 기기 저장 모드에서는 비밀번호 찾기를 쓸 수 없어요." };
+}
+export async function getRecoveryEmail() {
+  return null;
+}
+export async function setRecoveryEmail() {
+  return { error: "이 기기 저장 모드에서는 이메일을 등록할 수 없어요." };
+}
+
+/* ---------- 관리자 기능 (로컬 모드에서는 없음) ---------- */
+export async function fetchAllUsers() {
+  return { error: "이 기기 저장 모드에서는 쓸 수 없어요." };
+}
+export async function adminResetProgress() {
+  return { error: "이 기기 저장 모드에서는 쓸 수 없어요." };
+}
+export async function adminDeleteUser() {
+  return { error: "이 기기 저장 모드에서는 쓸 수 없어요." };
+}

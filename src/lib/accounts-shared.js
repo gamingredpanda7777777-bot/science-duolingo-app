@@ -53,3 +53,20 @@ export function validatePassword(pw) {
   if (value.length > 64) return "비밀번호가 너무 길어요.";
   return null;
 }
+
+/* 내부용 가짜 이메일에 붙는 꼬리표. 이 주소로는 메일을 받을 수 없다. */
+const FAKE_MAIL_SUFFIX = "@science-app.invalid";
+
+export function isRecoverableEmail(email) {
+  const value = String(email || "").trim();
+  return Boolean(value) && !value.endsWith(FAKE_MAIL_SUFFIX);
+}
+
+export function validateEmail(email) {
+  const value = String(email || "").trim();
+  if (!value) return "이메일을 입력해 주세요.";
+  if (value.endsWith(FAKE_MAIL_SUFFIX)) return "사용할 수 없는 주소예요.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "이메일 형식이 올바르지 않아요.";
+  if (value.length > 254) return "이메일이 너무 길어요.";
+  return null;
+}

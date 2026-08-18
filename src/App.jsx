@@ -30,6 +30,14 @@ import {
   changeId,
   changePassword,
   deleteAccount,
+  requestPasswordReset,
+  isRecoveryLink,
+  completePasswordReset,
+  getRecoveryEmail,
+  setRecoveryEmail,
+  fetchAllUsers,
+  adminResetProgress,
+  adminDeleteUser,
   fetchProgress,
   pushProgress,
   formatCode,
@@ -866,10 +874,12 @@ function Notice({ text, tone = "danger" }) {
 }
 
 function AuthScreen({ onAuthed }) {
-  const [mode, setMode] = useState("login"); // login | signup
+  const [mode, setMode] = useState("login"); // login | signup | forgot
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [email, setEmail] = useState("");
+  const [sentTo, setSentTo] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [newAccount, setNewAccount] = useState(null);
@@ -885,7 +895,7 @@ function AuthScreen({ onAuthed }) {
           setError("비밀번호가 서로 달라요.");
           return;
         }
-        const res = await createAccount(id, pw);
+        const res = await createAccount(id, pw, email);
         if (res.error) {
           setError(res.error);
           return;
@@ -902,6 +912,59 @@ function AuthScreen({ onAuthed }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleForgot() {
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      const res = await requestPasswordReset(email);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setSentTo(email.trim());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* 비밀번호 찾기 — 메일 보낸 뒤 */
+  if (sentTo) {
+    return (
+      <div
+        className="scroll-col"
+        style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+      >
+        <div style={{ textAlign: "center", marginTop: 30 }}>
+          <div style={{ fontSize: 40 }}>📮</div>
+          <div style={{ fontWeight: 800, fontSize: 18, marginTop: 8 }}>메일을 보냈어요</div>
+        </div>
+        <Card style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text-2)" }}>
+            <b style={{ color: "var(--text)" }}>{sentTo}</b> 로 비밀번호를 다시 정하는 링크를
+            보냈어요. 메일함을 확인하고 링크를 눌러 주세요.
+            <br />
+            <br />
+            메일이 안 보이면 스팸함도 확인해 보세요. 그 주소로 가입한 계정이 없으면 메일이 오지
+            않아요.
+          </div>
+        </Card>
+        <div style={{ marginTop: 18 }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSentTo(null);
+              setMode("login");
+              setError("");
+            }}
+          >
+            로그인으로 돌아가기
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   /* 가입 직후 — 고유 코드를 반드시 보여준다 */
@@ -951,10 +1014,15 @@ function AuthScreen({ onAuthed }) {
         <div style={{ fontSize: 38 }}>🧪</div>
         <div style={{ fontWeight: 800, fontSize: 20, marginTop: 4 }}>과학 학습 프로그램</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
-          {mode === "login" ? "다시 만나서 반가워요" : "계정을 만들어 기록을 저장하세요"}
+          {mode === "forgot"
+            ? "가입할 때 등록한 이메일을 알려주세요"
+            : mode === "login"
+            ? "다시 만나서 반가워요"
+            : "계정을 만들어 기록을 저장하세요"}
         </div>
       </div>
 
+      {mode !== "forgot" && (
       <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
         {[
           { key: "login", label: "로그인" },
@@ -982,45 +1050,123 @@ function AuthScreen({ onAuthed }) {
           </div>
         ))}
       </div>
+      )}
 
       <Notice text={error} />
 
-      <Field
-        label={mode === "login" ? "아이디 또는 고유 코드" : "아이디 (4~16자, 영문·숫자·_)"}
-        value={id}
-        onChange={(e) => setId(e.target.value)}
-        placeholder={mode === "login" ? "아이디 또는 코드" : "아이디"}
-        autoCapitalize="none"
-        autoCorrect="off"
-      />
-      <Field
-        label="비밀번호 (6자 이상)"
-        type="password"
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && mode === "login") handleSubmit();
-        }}
-        placeholder="비밀번호"
-      />
-      {mode === "signup" && (
-        <Field
-          label="비밀번호 확인"
-          type="password"
-          value={pw2}
-          onChange={(e) => setPw2(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSubmit();
-          }}
-          placeholder="한 번 더 입력"
-        />
-      )}
+      {mode === "forgot" ? (
+        <>
+          <Field
+            label="이메일"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleForgot();
+            }}
+            placeholder="가입할 때 등록한 이메일"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <div style={{ marginTop: 6 }}>
+            <Button onClick={handleForgot} disabled={busy || !email.trim()}>
+              {busy ? "보내는 중..." : "재설정 메일 받기"}
+            </Button>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setMode("login");
+                setError("");
+              }}
+            >
+              돌아가기
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Field
+            label={mode === "login" ? "아이디 또는 고유 코드" : "아이디 (4~16자, 영문·숫자·_)"}
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder={mode === "login" ? "아이디 또는 코드" : "아이디"}
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <Field
+            label="비밀번호 (6자 이상)"
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && mode === "login") handleSubmit();
+            }}
+            placeholder="비밀번호"
+          />
+          {mode === "signup" && (
+            <>
+              <Field
+                label="비밀번호 확인"
+                type="password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                placeholder="한 번 더 입력"
+              />
+              <Field
+                label="이메일 (선택)"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                }}
+                placeholder="비밀번호를 잊었을 때 쓸 주소"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <div
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.6,
+                  color: "var(--text-3)",
+                  marginTop: -6,
+                  marginBottom: 12,
+                }}
+              >
+                이메일을 적어두면 비밀번호를 잊어도 다시 정할 수 있어요. 안 적으면 비밀번호를
+                잃어버렸을 때 계정을 되찾을 방법이 없어요.
+              </div>
+            </>
+          )}
 
-      <div style={{ marginTop: 6 }}>
-        <Button onClick={handleSubmit} disabled={busy || !id.trim() || !pw}>
-          {busy ? "처리 중..." : mode === "login" ? "로그인" : "계정 만들기"}
-        </Button>
-      </div>
+          <div style={{ marginTop: 6 }}>
+            <Button onClick={handleSubmit} disabled={busy || !id.trim() || !pw}>
+              {busy ? "처리 중..." : mode === "login" ? "로그인" : "계정 만들기"}
+            </Button>
+          </div>
+
+          {mode === "login" && serverMode && (
+            <div
+              onClick={() => {
+                setMode("forgot");
+                setError("");
+              }}
+              style={{
+                marginTop: 12,
+                textAlign: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--primary)",
+                cursor: "pointer",
+              }}
+            >
+              비밀번호를 잊으셨나요?
+            </div>
+          )}
+        </>
+      )}
 
       <div
         style={{
@@ -1124,7 +1270,290 @@ function AuthScreen({ onAuthed }) {
 /* ============================================================
    마이 화면 — 고유 코드 확인, 아이디·비밀번호 변경
    ============================================================ */
-function AccountScreen({ account, progress, onAccountChange, onLogout, onNav }) {
+/* ============================================================
+   관리자 화면 — 전체 사용자와 학습 기록
+   실제 접근 권한은 데이터베이스 정책이 판단한다.
+   ============================================================ */
+/* 레슨 id 로 레슨 이름을 찾는다 */
+function lessonTitleOf(lessonId) {
+  for (const subj of SUBJECTS) {
+    for (const mod of subj.modules) {
+      for (const lesson of mod.lessons) {
+        if (lesson.id === lessonId) return lesson.title;
+      }
+    }
+  }
+  return lessonId;
+}
+
+function AdminScreen({ account, onBack }) {
+  const [users, setUsers] = useState(null);
+  const [error, setError] = useState("");
+  const [openCode, setOpenCode] = useState(null);
+  const [confirm, setConfirm] = useState(null); // { code, kind }
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setError("");
+    const res = await fetchAllUsers();
+    if (res.error) {
+      setError(res.error);
+      setUsers([]);
+      return;
+    }
+    setUsers(res.users);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function runAction() {
+    if (!confirm || busy) return;
+    setBusy(true);
+    try {
+      const res =
+        confirm.kind === "reset"
+          ? await adminResetProgress(confirm.code)
+          : await adminDeleteUser(confirm.code);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setConfirm(null);
+        setOpenCode(null);
+        await load();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <TopBar title="관리자" onBack={onBack} />
+      <div
+        style={{ flex: 1, padding: "0 18px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+      >
+        <Notice text={error} />
+
+        {users === null && (
+          <div style={{ textAlign: "center", marginTop: 40, color: "var(--text-3)", fontSize: 13 }}>
+            불러오는 중...
+          </div>
+        )}
+
+        {users && users.length === 0 && !error && (
+          <div style={{ textAlign: "center", marginTop: 40, color: "var(--text-3)", fontSize: 13 }}>
+            아직 가입한 사람이 없어요.
+          </div>
+        )}
+
+        {users && users.length > 0 && (
+          <div style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 4px", fontWeight: 700 }}>
+            사용자 {users.length}명
+          </div>
+        )}
+
+        {(users || []).map((u) => {
+          const open = openCode === u.code;
+          const isMe = u.code === account.code;
+          return (
+            <Card key={u.code} style={{ marginTop: 10 }}>
+              <div
+                onClick={() => setOpenCode(open ? null : u.code)}
+                style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>
+                    {u.id}
+                    {u.isAdmin && (
+                      <span
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "var(--primary)",
+                          background: "var(--primary-soft)",
+                          padding: "2px 6px",
+                          borderRadius: 8,
+                        }}
+                      >
+                        관리자
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                    Lv.{levelOf(u.xp)} · 경험치 {u.xp} · 연속 {u.streak}일 · 완료{" "}
+                    {u.completedLessons.length}개
+                  </div>
+                </div>
+                <ChevronRight size={16} color="var(--text-3)" />
+              </div>
+
+              {open && (
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.8 }}>
+                    고유 코드: <b>{formatCode(u.code)}</b>
+                    <br />
+                    마지막 학습: {u.lastStudyDate || "없음"}
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6 }}>
+                      레슨별 최고 기록
+                    </div>
+                    {Object.keys(u.lessonBest).length === 0 ? (
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>아직 푼 레슨이 없어요.</div>
+                    ) : (
+                      Object.entries(u.lessonBest).map(([lessonId, best]) => (
+                        <div
+                          key={lessonId}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 11,
+                            padding: "3px 0",
+                            color: "var(--text-2)",
+                          }}
+                        >
+                          <span>{lessonTitleOf(lessonId)}</span>
+                          <b>
+                            {best.correct}/{best.total}
+                          </b>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {!isMe && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                      <Button variant="outline" onClick={() => setConfirm({ code: u.code, kind: "reset" })}>
+                        기록 초기화
+                      </Button>
+                      <Button
+                        onClick={() => setConfirm({ code: u.code, kind: "delete" })}
+                        style={{ background: "var(--danger)", color: "#fff" }}
+                      >
+                        계정 삭제
+                      </Button>
+                    </div>
+                  )}
+                  {isMe && (
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>
+                      내 계정이라 여기서는 지울 수 없어요.
+                    </div>
+                  )}
+
+                  {confirm && confirm.code === u.code && (
+                    <Card style={{ marginTop: 12, background: "var(--danger-soft)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--danger)" }}>
+                        {confirm.kind === "reset"
+                          ? `${u.id} 님의 학습 기록을 지울까요?`
+                          : `${u.id} 님의 계정을 지울까요?`}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 6, lineHeight: 1.6 }}>
+                        되돌릴 수 없어요.
+                        {confirm.kind === "delete" &&
+                          " 로그인 정보는 남으니 Supabase 대시보드에서 마저 정리해 주세요."}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        <Button variant="outline" onClick={() => setConfirm(null)} disabled={busy}>
+                          취소
+                        </Button>
+                        <Button
+                          onClick={runAction}
+                          disabled={busy}
+                          style={{ background: "var(--danger)", color: "#fff" }}
+                        >
+                          {busy ? "처리 중..." : "실행"}
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+
+        <div style={{ height: 20 }} />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   메일 링크로 들어왔을 때 — 새 비밀번호 설정
+   ============================================================ */
+function ResetPasswordScreen({ onDone }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSave() {
+    if (busy) return;
+    setError("");
+    if (pw !== pw2) {
+      setError("비밀번호가 서로 달라요.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await completePasswordReset(pw);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="scroll-col"
+      style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 22 }}>
+        <div style={{ fontSize: 38 }}>🔑</div>
+        <div style={{ fontWeight: 800, fontSize: 19, marginTop: 6 }}>새 비밀번호 정하기</div>
+        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
+          앞으로 쓸 비밀번호를 입력해 주세요
+        </div>
+      </div>
+
+      <Notice text={error} />
+
+      <Field
+        label="새 비밀번호 (6자 이상)"
+        type="password"
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        placeholder="새 비밀번호"
+      />
+      <Field
+        label="새 비밀번호 확인"
+        type="password"
+        value={pw2}
+        onChange={(e) => setPw2(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleSave();
+        }}
+        placeholder="한 번 더 입력"
+      />
+
+      <div style={{ marginTop: 6 }}>
+        <Button onClick={handleSave} disabled={busy || !pw || !pw2}>
+          {busy ? "저장 중..." : "비밀번호 바꾸기"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AccountScreen({ account, progress, onAccountChange, onLogout, onNav, onOpenAdmin }) {
   const [panel, setPanel] = useState(null); // null | id | password
   const [newId, setNewId] = useState(account.id);
   const [curPw, setCurPw] = useState("");
@@ -1132,8 +1561,40 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav }) 
   const [msg, setMsg] = useState(null); // { text, tone }
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [recoveryEmail, setRecoveryEmailState] = useState(null);
+  const [newEmail, setNewEmail] = useState("");
 
   const level = levelOf(progress.xp);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const mail = await getRecoveryEmail();
+      if (alive) setRecoveryEmailState(mail);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function handleEmailSave() {
+    if (busy) return;
+    setMsg(null);
+    setBusy(true);
+    try {
+      const res = await setRecoveryEmail(account.code, newEmail);
+      if (res.error) {
+        setMsg({ text: res.error, tone: "danger" });
+        return;
+      }
+      setRecoveryEmailState(newEmail.trim());
+      setNewEmail("");
+      setPanel(null);
+      setMsg({ text: "이메일을 등록했어요.", tone: "success" });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleIdSave() {
     if (busy) return;
@@ -1282,6 +1743,60 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav }) 
           )}
         </Card>
 
+        {account.isAdmin && (
+          <Card
+            style={{ marginTop: 10, background: "var(--primary-light)" }}
+            onClick={onOpenAdmin}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>관리자 화면</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+                  전체 사용자와 학습 기록 보기
+                </div>
+              </div>
+              <ChevronRight size={16} color="var(--primary)" />
+            </div>
+          </Card>
+        )}
+
+        {serverMode && (
+          <Card style={{ marginTop: 10 }}>
+            <div
+              onClick={() => {
+                setPanel(panel === "email" ? null : "email");
+                setNewEmail(recoveryEmail || "");
+                setMsg(null);
+              }}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: "4px 0" }}
+            >
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>비밀번호 찾기용 이메일</div>
+                <div style={{ fontSize: 11, color: recoveryEmail ? "var(--text-3)" : "var(--danger)", marginTop: 2 }}>
+                  {recoveryEmail || "등록 안 됨 — 비밀번호를 잊으면 못 찾아요"}
+                </div>
+              </div>
+              <ChevronRight size={16} color="var(--text-3)" />
+            </div>
+            {panel === "email" && (
+              <div style={{ marginTop: 10 }}>
+                <Field
+                  label="이메일"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="받을 수 있는 이메일"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+                <Button onClick={handleEmailSave} disabled={busy || !newEmail.trim()}>
+                  {busy ? "처리 중..." : "저장"}
+                </Button>
+              </div>
+            )}
+          </Card>
+        )}
+
         <div style={{ marginTop: 16 }}>
           <Button variant="outline" onClick={onLogout}>
             로그아웃
@@ -1340,6 +1855,7 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav }) 
 export default function ScienceDuolingoApp() {
   const [account, setAccount] = useState(null);
   const [booting, setBooting] = useState(true);
+  const [recovering, setRecovering] = useState(() => isRecoveryLink());
   const [screen, setScreen] = useState("home");
   const [activeSubject, setActiveSubject] = useState("physics");
   const [activeLesson, setActiveLesson] = useState(null);
@@ -1364,6 +1880,8 @@ export default function ScienceDuolingoApp() {
     let alive = true;
     (async () => {
       try {
+        // 메일 링크로 들어온 경우엔 새 비밀번호를 먼저 정하게 한다
+        if (isRecoveryLink()) return;
         const acc = await getCurrentAccount();
         if (!alive || !acc) return;
         setAccount(acc);
@@ -1504,25 +2022,39 @@ export default function ScienceDuolingoApp() {
           </div>
         )}
 
-        {!booting && !account && <AuthScreen onAuthed={handleAuthed} />}
+        {!booting && recovering && (
+          <ResetPasswordScreen
+            onDone={async () => {
+              setRecovering(false);
+              await logout();
+              setAccount(null);
+            }}
+          />
+        )}
 
-        {!booting && account && screen === "home" && (
+        {!booting && !recovering && !account && <AuthScreen onAuthed={handleAuthed} />}
+
+        {!booting && !recovering && account && screen === "home" && (
           <HomeScreen
             progress={progress}
             onOpenModules={openModules}
             onNav={handleNav}
           />
         )}
-        {!booting && account && screen === "me" && (
+        {!booting && !recovering && account && screen === "me" && (
           <AccountScreen
             account={account}
             progress={progress}
             onAccountChange={setAccount}
             onLogout={handleLogout}
             onNav={handleNav}
+            onOpenAdmin={() => setScreen("admin")}
           />
         )}
-        {!booting && account && screen === "modules" && (
+        {!booting && !recovering && account && screen === "admin" && (
+          <AdminScreen account={account} onBack={() => setScreen("me")} />
+        )}
+        {!booting && !recovering && account && screen === "modules" && (
           <ModulesScreen
             subjectId={activeSubject}
             onBack={() => setScreen("home")}
@@ -1530,10 +2062,10 @@ export default function ScienceDuolingoApp() {
             progress={progress}
           />
         )}
-        {!booting && account && screen === "quiz" && activeLesson && (
+        {!booting && !recovering && account && screen === "quiz" && activeLesson && (
           <QuizScreen lesson={activeLesson} onExit={() => setScreen("modules")} onFinish={finishLesson} />
         )}
-        {!booting && account && screen === "result" && lastResult && activeLesson && (
+        {!booting && !recovering && account && screen === "result" && lastResult && activeLesson && (
           <ResultScreen
             result={lastResult}
             lesson={activeLesson}
