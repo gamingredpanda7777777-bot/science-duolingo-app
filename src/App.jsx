@@ -382,6 +382,9 @@ function ModulesScreen({ subjectId, onBack, onStartLesson, progress }) {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 700 }}>{lesson.title}</div>
                           <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                            {lesson.video && !locked && (
+                              <span style={{ color: "var(--primary)", fontWeight: 700 }}>영상 · </span>
+                            )}
                             {locked
                               ? "곧 추가돼요"
                               : best
@@ -399,6 +402,99 @@ function ModulesScreen({ subjectId, onBack, onStartLesson, progress }) {
           })
         )}
         <div style={{ height: 20 }} />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   개념 영상
+   lesson.video 에 파일 경로("/videos/x.mp4") 또는 유튜브 주소를 넣으면
+   문제 풀기 전에 영상 화면이 먼저 나온다.
+   ============================================================ */
+
+/* 유튜브 주소면 영상 ID 를 뽑아낸다. 아니면 null */
+function youtubeIdOf(url) {
+  const value = String(url || "");
+  const m =
+    value.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/) ||
+    value.match(/[?&]v=([A-Za-z0-9_-]{6,})/) ||
+    value.match(/youtube\.com\/(?:embed|shorts)\/([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+
+function VideoPlayer({ src }) {
+  const ytId = youtubeIdOf(src);
+  const box = {
+    width: "100%",
+    aspectRatio: "16 / 9",
+    background: "#000",
+    borderRadius: 16,
+    overflow: "hidden",
+  };
+
+  if (ytId) {
+    return (
+      <div style={box}>
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+          title="개념 영상"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          style={{ width: "100%", height: "100%", border: 0, display: "block" }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={box}>
+      <video
+        src={src}
+        controls
+        playsInline
+        preload="metadata"
+        style={{ width: "100%", height: "100%", display: "block" }}
+      >
+        이 브라우저는 영상 재생을 지원하지 않아요.
+      </video>
+    </div>
+  );
+}
+
+function LessonIntroScreen({ lesson, onStart, onBack }) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <TopBar title={lesson.title} onBack={onBack} />
+      <div
+        className="scroll-col"
+        style={{ flex: 1, display: "flex", flexDirection: "column", padding: "6px 18px 18px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "var(--primary)",
+            background: "var(--primary-soft)",
+            width: "fit-content",
+            padding: "3px 8px",
+            borderRadius: 8,
+            marginBottom: 10,
+          }}
+        >
+          개념 영상
+        </div>
+
+        <VideoPlayer src={lesson.video} />
+
+        <div style={{ fontSize: 12, lineHeight: 1.7, color: "var(--text-2)", marginTop: 14 }}>
+          영상을 보고 나서 문제를 풀면 훨씬 잘 풀려요. 문제를 풀다가 다시 보고 싶으면 뒤로
+          돌아오면 돼요.
+        </div>
+
+        <div style={{ marginTop: "auto", paddingTop: 18 }}>
+          <Button onClick={onStart}>문제 풀기 ({lesson.questions?.length ?? 0}문제)</Button>
+        </div>
       </div>
     </div>
   );
@@ -1930,7 +2026,7 @@ export default function ScienceDuolingoApp() {
   function startLesson(lesson) {
     setActiveLesson(lesson);
     setRetryMode(false);
-    setScreen("quiz");
+    setScreen(lesson.video ? "intro" : "quiz");
   }
 
   function finishLesson(result) {
@@ -2062,8 +2158,19 @@ export default function ScienceDuolingoApp() {
             progress={progress}
           />
         )}
+        {!booting && !recovering && account && screen === "intro" && activeLesson && (
+          <LessonIntroScreen
+            lesson={activeLesson}
+            onStart={() => setScreen("quiz")}
+            onBack={() => setScreen("modules")}
+          />
+        )}
         {!booting && !recovering && account && screen === "quiz" && activeLesson && (
-          <QuizScreen lesson={activeLesson} onExit={() => setScreen("modules")} onFinish={finishLesson} />
+          <QuizScreen
+            lesson={activeLesson}
+            onExit={() => setScreen(activeLesson.video && !retryMode ? "intro" : "modules")}
+            onFinish={finishLesson}
+          />
         )}
         {!booting && !recovering && account && screen === "result" && lastResult && activeLesson && (
           <ResultScreen

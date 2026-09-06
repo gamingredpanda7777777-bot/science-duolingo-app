@@ -88,9 +88,15 @@ create policy "관리자 기록 삭제" on public.progress
 --  ★ 아래 아이디를 실제 아이디로 바꾼 뒤 실행하세요.
 --    Table Editor → profiles 에서 정확한 username 을 확인할 수 있어요.
 -- ============================================================
+--  첫 관리자를 지정할 때는 3번의 안전장치를 잠시 꺼야 한다.
+--  (아직 관리자가 아무도 없어서 그 장치에 스스로 걸리기 때문)
+alter table public.profiles disable trigger profiles_no_code_change;
+
 update public.profiles
 set is_admin = true
 where lower(username) = lower('seolon3626');
+
+alter table public.profiles enable trigger profiles_no_code_change;
 
 -- 제대로 지정됐는지 확인 (결과에 해당 아이디가 나와야 함)
 select username, code, is_admin from public.profiles where is_admin = true;

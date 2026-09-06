@@ -59,6 +59,8 @@ export const SUBJECTS = [
             id: "std_bio_sense_a_eye_lesson",
             title: "눈",
             status: "available",
+            // 개념 영상: public/videos/ 안의 파일 경로 또는 유튜브 주소
+            video: "/videos/unit4-eye.mp4",
             questions: EYE_QUESTIONS,
           },
           {
