@@ -13,13 +13,16 @@ import {
   Beaker,
   Dna,
 } from "lucide-react";
-import { SUBJECTS } from "./data/subjects.js";
+import { SUBJECTS, allQuestionsFlat } from "./data/subjects.js";
 import {
   loadProgress,
   saveProgress,
   applyLessonResult,
   levelOf,
   xpIntoLevel,
+  ensureDailyChallenge,
+  applyDailyChallengeResult,
+  DAILY_MIN_SOLVED,
 } from "./lib/progress.js";
 import {
   serverMode,
@@ -178,7 +181,68 @@ function TopBar({ title, onBack, right }) {
    화면들
    ============================================================ */
 
-function HomeScreen({ progress, onOpenModules, onNav }) {
+/* 오늘의 랜덤 10 카드 — 이미 풀어본 문제 중에서, 틀린 적 있는 문제가
+   2배 더 잘 뽑히도록 계정별로 매일 새로 골라진다. */
+function DailyChallengeCard({ progress, onStart }) {
+  const dc = progress.dailyChallenge;
+  const solvedCount = Object.values(progress.questionStats || {}).filter(
+    (s) => s.attempts > 0
+  ).length;
+
+  if (!dc || dc.questionIds.length === 0) {
+    const remaining = Math.max(0, DAILY_MIN_SOLVED - solvedCount);
+    return (
+      <Card style={{ marginTop: 10, opacity: 0.7 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 22 }}>🎲</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>오늘의 랜덤 10</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+              {remaining > 0
+                ? `문제를 ${remaining}개 더 풀면 열려요`
+                : "내일 다시 확인해 보세요"}
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (dc.done) {
+    return (
+      <Card style={{ marginTop: 10, background: "var(--success-soft)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 22 }}>✅</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--success)" }}>
+              오늘의 랜덤 10 완료!
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+              {dc.correctIds.length}/{dc.questionIds.length} 정답 · 내일 새 문제로 돌아와요
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card style={{ marginTop: 10, background: "var(--primary-light)", cursor: "pointer" }} onClick={onStart}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ fontSize: 22 }}>🎲</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--primary)" }}>오늘의 랜덤 10</div>
+          <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+            이미 푼 문제 {dc.questionIds.length}개 · 틀렸던 문제가 더 자주 나와요
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--primary)" />
+      </div>
+    </Card>
+  );
+}
+
+function HomeScreen({ progress, onOpenModules, onNav, onStartDaily }) {
   const level = levelOf(progress.xp);
   const intoLevel = xpIntoLevel(progress.xp);
 
@@ -244,6 +308,8 @@ function HomeScreen({ progress, onOpenModules, onNav }) {
           <div style={{ fontWeight: 700, fontSize: 16 }}>{progress.streak}일</div>
         </div>
       </Card>
+
+      <DailyChallengeCard progress={progress} onStart={onStartDaily} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "18px 0 8px" }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>내 학습 모듈</div>
@@ -910,7 +976,9 @@ function ResultScreen({ result, lesson, onBackToModules, onRetryWrong }) {
             오답 문제 다시 풀기
           </Button>
         )}
-        <Button onClick={onBackToModules}>학습 모듈로 돌아가기</Button>
+        <Button onClick={onBackToModules}>
+          {lesson.isDaily ? "홈으로 돌아가기" : "학습 모듈로 돌아가기"}
+        </Button>
       </div>
     </div>
   );
@@ -1962,13 +2030,14 @@ export default function ScienceDuolingoApp() {
   // 서버 기록과 기기 기록 중 더 많이 진행된 쪽을 쓴다
   async function resolveProgress(acc) {
     const localCopy = loadProgress(acc.code);
-    if (!serverMode) return localCopy;
+    if (!serverMode) return ensureDailyChallenge(localCopy, allQuestionsFlat());
     const remoteCopy = await fetchProgress();
     if (!remoteCopy) {
       await pushProgress(localCopy);
-      return localCopy;
+      return ensureDailyChallenge(localCopy, allQuestionsFlat());
     }
-    return remoteCopy.xp >= localCopy.xp ? remoteCopy : localCopy;
+    const best = remoteCopy.xp >= localCopy.xp ? remoteCopy : localCopy;
+    return ensureDailyChallenge(best, allQuestionsFlat());
   }
 
   // 앱을 열 때 이전 로그인 상태를 복원한다
@@ -2005,7 +2074,10 @@ export default function ScienceDuolingoApp() {
   }
 
   function handleNav(tab) {
-    if (tab === "home") setScreen("home");
+    if (tab === "home") {
+      setScreen("home");
+      setProgress((prev) => ensureDailyChallenge(prev, allQuestionsFlat()));
+    }
     else if (tab === "me") setScreen("me");
     else if (tab === "modules") openModules("biology");
     else if (tab === "stats") setScreen("home"); // 기록 화면은 아직 준비 중
@@ -2033,9 +2105,11 @@ export default function ScienceDuolingoApp() {
     setLastResult(result);
     // 오답 다시 풀기는 기록에 반영하지 않는다 (전체 레슨을 푼 것이 아니므로)
     if (!retryMode) {
-      setProgress((prev) =>
-        applyLessonResult(prev, activeLesson.id, result.correctIds.length, result.total)
-      );
+      if (activeLesson.isDaily) {
+        setProgress((prev) => applyDailyChallengeResult(prev, result));
+      } else {
+        setProgress((prev) => applyLessonResult(prev, activeLesson.id, result));
+      }
     }
     setScreen("result");
   }
@@ -2044,6 +2118,18 @@ export default function ScienceDuolingoApp() {
     const wrongQuestions = activeLesson.questions.filter((q) => lastResult.wrongIds.includes(q.id));
     setActiveLesson({ ...activeLesson, questions: wrongQuestions });
     setRetryMode(true);
+    setScreen("quiz");
+  }
+
+  /* 오늘의 랜덤 10 시작 — 이미 풀어본 문제 중 오늘 뽑힌 것들로 퀴즈를 연다 */
+  function startDailyChallenge() {
+    const dc = progress.dailyChallenge;
+    if (!dc || dc.questionIds.length === 0) return;
+    const byId = new Map(allQuestionsFlat().map((q) => [q.id, q]));
+    const questions = dc.questionIds.map((id) => byId.get(id)).filter(Boolean);
+    if (questions.length === 0) return;
+    setActiveLesson({ id: `daily-${dc.date}`, title: "오늘의 랜덤 10", isDaily: true, questions });
+    setRetryMode(false);
     setScreen("quiz");
   }
 
@@ -2135,6 +2221,7 @@ export default function ScienceDuolingoApp() {
             progress={progress}
             onOpenModules={openModules}
             onNav={handleNav}
+            onStartDaily={startDailyChallenge}
           />
         )}
         {!booting && !recovering && account && screen === "me" && (
@@ -2168,7 +2255,11 @@ export default function ScienceDuolingoApp() {
         {!booting && !recovering && account && screen === "quiz" && activeLesson && (
           <QuizScreen
             lesson={activeLesson}
-            onExit={() => setScreen(activeLesson.video && !retryMode ? "intro" : "modules")}
+            onExit={() =>
+              setScreen(
+                activeLesson.isDaily ? "home" : activeLesson.video && !retryMode ? "intro" : "modules"
+              )
+            }
             onFinish={finishLesson}
           />
         )}
@@ -2176,7 +2267,7 @@ export default function ScienceDuolingoApp() {
           <ResultScreen
             result={lastResult}
             lesson={activeLesson}
-            onBackToModules={() => setScreen("modules")}
+            onBackToModules={() => setScreen(activeLesson.isDaily ? "home" : "modules")}
             onRetryWrong={retryWrong}
           />
         )}

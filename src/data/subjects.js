@@ -146,3 +146,20 @@ export const SUBJECTS = [
     ],
   },
 ];
+
+/* 모든 단원의 문제를 하나의 목록으로 펼친다.
+   "오늘의 랜덤 10"이 단원을 가리지 않고 이미 푼 문제 중에서 뽑을 때 쓴다. */
+export function allQuestionsFlat() {
+  const list = [];
+  for (const subject of SUBJECTS) {
+    for (const mod of subject.modules) {
+      for (const lesson of mod.lessons) {
+        if (!lesson.questions) continue;
+        for (const q of lesson.questions) {
+          list.push({ ...q, lessonId: lesson.id, lessonTitle: lesson.title });
+        }
+      }
+    }
+  }
+  return list;
+}
