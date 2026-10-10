@@ -5,6 +5,10 @@ import { EYE_QUESTIONS, EAR_QUESTIONS, SKIN_QUESTIONS, TASTE_SMELL_QUESTIONS } f
 import { NERVOUS_SYSTEM_QUESTIONS, NEURON_QUESTIONS, REFLEX_QUESTIONS } from "./unit4-nerve.js";
 import { HORMONE_QUESTIONS, BODY_REGULATION_QUESTIONS } from "./unit4-homeostasis.js";
 import { SHORT_ANSWER_QUESTIONS, ADVANCED_QUESTIONS } from "./unit4-advanced.js";
+import { UNIT5_NEED_QUESTIONS } from "./unit5-cell.js";
+import { UNIT5_CHROMOSOME_QUESTIONS } from "./unit5-chromosome.js";
+import { UNIT5_MEIOSIS_QUESTIONS } from "./unit5-meiosis.js";
+import { UNIT5_DEVELOPMENT_QUESTIONS } from "./unit5-development.js";
 
 /* ============================================================
    과목 / 모듈 / 레슨 구조
@@ -140,6 +144,36 @@ export const SUBJECTS = [
             title: "초고난도 심화 문제",
             status: "available",
             questions: ADVANCED_QUESTIONS,
+          },
+        ],
+      },
+      {
+        id: "cell-division",
+        title: "세포 분열과 발생",
+        lessons: [
+          {
+            id: "std_bio_cell_a_lesson",
+            title: "세포 분열이 필요한 까닭",
+            status: "available",
+            questions: UNIT5_NEED_QUESTIONS,
+          },
+          {
+            id: "std_bio_cell_a_lo2_lesson",
+            title: "염색체 수가 유지되는 세포 분열",
+            status: "available",
+            questions: UNIT5_CHROMOSOME_QUESTIONS,
+          },
+          {
+            id: "std_bio_cell_a_lo3_lesson",
+            title: "생식세포가 만들어지는 과정",
+            status: "available",
+            questions: UNIT5_MEIOSIS_QUESTIONS,
+          },
+          {
+            id: "std_bio_cell_a_lo4_lesson",
+            title: "수정란이 개체가 되는 과정",
+            status: "available",
+            questions: UNIT5_DEVELOPMENT_QUESTIONS,
           },
         ],
       },

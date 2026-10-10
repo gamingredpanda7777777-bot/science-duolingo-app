@@ -38,6 +38,10 @@ const DATA_FILES = [
   "src/data/unit4-nerve.js",
   "src/data/unit4-homeostasis.js",
   "src/data/unit4-advanced.js",
+  "src/data/unit5-cell.js",
+  "src/data/unit5-chromosome.js",
+  "src/data/unit5-meiosis.js",
+  "src/data/unit5-development.js",
   "src/data/subjects.js",
 ];
 
