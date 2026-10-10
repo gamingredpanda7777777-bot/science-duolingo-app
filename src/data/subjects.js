@@ -9,6 +9,9 @@ import { UNIT5_NEED_QUESTIONS } from "./unit5-cell.js";
 import { UNIT5_CHROMOSOME_QUESTIONS } from "./unit5-chromosome.js";
 import { UNIT5_MEIOSIS_QUESTIONS } from "./unit5-meiosis.js";
 import { UNIT5_DEVELOPMENT_QUESTIONS } from "./unit5-development.js";
+import { HEREDITY_MENDEL_QUESTIONS } from "./heredity-mendel.js";
+import { HEREDITY_INDEPENDENT_QUESTIONS } from "./heredity-independent.js";
+import { HEREDITY_HUMAN_QUESTIONS } from "./heredity-human.js";
 
 /* ============================================================
    과목 / 모듈 / 레슨 구조
@@ -174,6 +177,30 @@ export const SUBJECTS = [
             title: "수정란이 개체가 되는 과정",
             status: "available",
             questions: UNIT5_DEVELOPMENT_QUESTIONS,
+          },
+        ],
+      },
+      {
+        id: "heredity",
+        title: "유전",
+        lessons: [
+          {
+            id: "std_bio_hered_a_lesson",
+            title: "멘델이 밝힌 유전 원리(1)",
+            status: "available",
+            questions: HEREDITY_MENDEL_QUESTIONS,
+          },
+          {
+            id: "std_bio_hered_b_lesson",
+            title: "두 가지 형질의 유전과 독립의 법칙",
+            status: "available",
+            questions: HEREDITY_INDEPENDENT_QUESTIONS,
+          },
+          {
+            id: "std_bio_hered_c_lesson",
+            title: "사람의 유전을 연구하는 방법",
+            status: "available",
+            questions: HEREDITY_HUMAN_QUESTIONS,
           },
         ],
       },

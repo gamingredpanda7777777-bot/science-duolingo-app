@@ -42,6 +42,9 @@ const DATA_FILES = [
   "src/data/unit5-chromosome.js",
   "src/data/unit5-meiosis.js",
   "src/data/unit5-development.js",
+  "src/data/heredity-mendel.js",
+  "src/data/heredity-independent.js",
+  "src/data/heredity-human.js",
   "src/data/subjects.js",
 ];
 
