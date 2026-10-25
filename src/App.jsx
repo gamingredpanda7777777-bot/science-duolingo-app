@@ -139,7 +139,7 @@ function BottomNav({ active, onNav }) {
         display: "flex",
         borderTop: "1px solid var(--line)",
         background: "#fff",
-        padding: "8px 4px 14px",
+        padding: "8px 4px calc(12px + env(safe-area-inset-bottom, 0px))",
         flexShrink: 0,
         position: "relative",
         zIndex: 2,
@@ -2405,6 +2405,7 @@ export default function ScienceDuolingoApp() {
 
   return (
     <div
+      className="app-shell"
       style={{
         "--primary": "#6C5CE7",
         "--primary-dark": "#5B4BD6",
@@ -2424,9 +2425,6 @@ export default function ScienceDuolingoApp() {
         "--danger-soft": "#FCE7EC",
         "--info": "#4FA8F5",
         "--info-soft": "#E5F1FD",
-        display: "flex",
-        justifyContent: "center",
-        padding: "24px 10px",
         fontFamily:
           '"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Noto Sans KR",system-ui,sans-serif',
         color: "var(--text)",
@@ -2434,18 +2432,43 @@ export default function ScienceDuolingoApp() {
       }}
     >
       <style>{`
-        .phone-frame { height: min(760px, calc(100vh - 32px)); }
-        /* 세로 flex 안의 요소는 공간이 모자라면 찌그러진다.
-           그러면 넘치지 않아 스크롤이 생기지 않는다. 찌그러짐을 막는다. */
-        .scroll-col > * { flex-shrink: 0; }
-        /* 모바일 주소창이 차지하는 높이까지 반영되는 단위 */
+        /* ---- 화면 비율에 따라 바뀌는 크기 ----
+           --gap: 바깥 여백. 화면이 작을수록 줄어든다. */
+        .app-shell {
+          --gap: clamp(0px, 2.5vh, 24px);
+          box-sizing: border-box;
+          min-height: 100vh;
+          min-height: 100dvh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: var(--gap) clamp(0px, 3vw, 24px);
+        }
+        /* 기본(세로로 긴 데스크톱·태블릿): 폰 폭의 단일 열 */
+        .phone-frame {
+          box-sizing: border-box;
+          width: min(440px, 100%);
+          height: min(900px, calc(100vh - 2 * var(--gap)));
+        }
         @supports (height: 100dvh) {
-          .phone-frame { height: min(760px, calc(100dvh - 32px)); }
+          .phone-frame { height: min(900px, calc(100dvh - 2 * var(--gap))); }
         }
-        /* 작은 화면에서는 테두리 없이 전체 화면을 쓴다 */
+        /* 가로로 누운 화면(폰 가로, 노트북의 낮은 창): 세로 여백을 없애고 폭을 넓힌다 */
+        @media (orientation: landscape) and (max-height: 620px) {
+          .app-shell { --gap: 0px; padding: 0; }
+          .phone-frame { width: min(720px, 100%); height: 100vh; height: 100dvh; }
+        }
+        /* 폰 세로 화면: 테두리와 여백 없이 전체 화면 */
         @media (max-width: 480px) {
-          .phone-frame { width: 100% !important; height: 100vh; height: 100dvh; }
+          .app-shell { padding: 0; }
+          .phone-frame { width: 100%; height: 100vh; height: 100dvh; }
         }
+        /* 매우 넓은 화면: 본문 폭은 유지하고 배경 여백만 넓힌다 */
+        @media (min-width: 1200px) {
+          .phone-frame { width: 460px; }
+        }
+        /* 세로 flex 안의 요소는 공간이 모자라면 찌그러진다. 찌그러짐을 막는다. */
+        .scroll-col > * { flex-shrink: 0; }
         /* 스크롤바: 얇고 연한 기본 디자인으로 교체 */
         .scroll-col { scrollbar-width: thin; scrollbar-color: #cfd3e6 transparent; }
         .scroll-col::-webkit-scrollbar { width: 6px; }
@@ -2456,8 +2479,6 @@ export default function ScienceDuolingoApp() {
       <div
         className="phone-frame"
         style={{
-          width: 380,
-          maxWidth: "100%",
           background: "var(--bg)",
           borderRadius: 0,
           boxShadow: "none",
