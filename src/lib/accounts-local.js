@@ -1,7 +1,7 @@
 /* ============================================================
    계정 시스템
 
-   ⚠️ 중요 — 이 계정은 "이 기기 안에서만" 유효해요.
+   중요 — 이 계정은 "이 기기 안에서만" 유효해요.
    서버가 없기 때문에 계정 정보가 사용자의 브라우저에만 저장돼요.
    따라서:
      - 다른 기기나 다른 브라우저에서는 로그인할 수 없어요.
@@ -147,6 +147,14 @@ export async function fetchProgress() {
 }
 export async function pushProgress() {
   return true;
+}
+
+/* 로컬 모드에서는 구글 로그인과 랭킹을 쓸 수 없다 */
+export async function signInWithGoogle() {
+  return { error: "구글 로그인은 서버에 연결된 상태에서만 쓸 수 있어요." };
+}
+export async function fetchLeaderboard() {
+  return { error: "랭킹은 서버에 연결된 상태에서만 볼 수 있어요." };
 }
 
 export function getAccount(code) {

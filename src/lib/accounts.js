@@ -42,3 +42,7 @@ export const adminDeleteUser = backend.adminDeleteUser;
 /* 학습 기록 동기화 (로컬 모드에서는 아무것도 하지 않는다) */
 export const fetchProgress = backend.fetchProgress;
 export const pushProgress = backend.pushProgress;
+
+/* 구글 로그인 · 랭킹 */
+export const signInWithGoogle = backend.signInWithGoogle;
+export const fetchLeaderboard = backend.fetchLeaderboard;

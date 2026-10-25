@@ -5,6 +5,32 @@
 
 ---
 
+## 0. 한눈에 보기 (최신)
+
+- **처음 화면**: 바로 로그인 창이 뜨지 않고, 체험 문제가 있는 랜딩 페이지가 먼저 나와요.
+  "로그인 없이 둘러보기"로 계정 없이 풀어볼 수 있어요(기록은 이 기기에만 저장).
+- **로그인**: 아이디·비밀번호, 또는 구글 로그인(서버 모드). 구글 설정은 아래 10번 섹션 참고.
+- **기록 탭**: 레벨과 경험치 바, 완료 레슨 수, 정답률, 연속 학습, 랭킹(아이디와 경험치만 표시).
+- **하단 메뉴**: 홈 · 학습 · 기록 · 마이 탭에서 항상 보여요.
+- **아이콘**: 이모지 대신 SVG 아이콘(lucide)을 써요.
+- **문제 점검과 레슨 추가 도구**: 아래 "문제 추가 도구" 참고.
+
+### 문제 추가 도구 (처음 쓰는 분도 쓸 수 있게)
+
+```bash
+node tools/check-questions.mjs              # 전체 문제 점검 (오류가 있으면 알려줘요)
+node tools/new-lesson.mjs 명세.json          # 명세 파일로 새 레슨을 자동 등록
+```
+
+명세 파일 모양은 `tools/lesson-spec.example.json`을 복사해서 고치면 돼요.
+등록 후 `check-questions`를 자동으로 돌려서, 문제가 틀리면 원래대로 되돌려요.
+
+### 설계 문서
+
+화면·색·글씨·간격 규칙은 `DESIGN.md`에 정리했어요. 새 화면을 만들기 전에 먼저 읽어 주세요.
+
+---
+
 ## 1. 준비물 (전부 무료)
 
 | 필요한 것 | 용도 |
@@ -148,6 +174,26 @@ src/
     unit4-nerve.js           4단원 신경계 40문제 중 30문제
     unit4-homeostasis.js     4단원 항상성 20문제
     unit4-advanced.js        4단원 단답형·초고난도 20문제
+    unit5-cell.js            5단원 1-1 세포 분열이 필요한 까닭
+    unit5-chromosome.js      5단원 1-2 염색체 수가 유지되는 세포 분열
+    unit5-meiosis.js         5단원 1-3 생식세포가 만들어지는 과정
+    unit5-development.js     5단원 1-4 수정란이 개체가 되는 과정
+    heredity-mendel.js       유전 — 멘델이 밝힌 유전 원리(1)
+    heredity-independent.js  유전 — 두 가지 형질의 유전과 독립의 법칙
+    heredity-human.js        유전 — 사람의 유전을 연구하는 방법
+  lib/
+    accounts.js              계정 함수 입구 (서버/로컬 자동 선택)
+    accounts-remote.js       서버 계정·기록·구글 로그인·랭킹
+    accounts-local.js        이 기기 안의 계정
+    progress.js              경험치·레벨·오늘의 랜덤 10 계산
+tools/
+  check-questions.mjs        문제 점검
+  new-lesson.mjs             새 레슨 자동 등록
+  build-preview.mjs          미리보기용 한 파일 만들기
+supabase/
+  schema.sql                 기본 테이블과 보안 규칙
+  admin.sql                  관리자 기능
+  ranking.sql                랭킹 함수
 ```
 
 ### 5단원 문제를 추가하는 순서
@@ -233,13 +279,32 @@ npm run build:preview
 
 ### 2) 데이터베이스 만들기
 
-왼쪽 메뉴 **SQL Editor** → **New query** → `supabase/schema.sql` 파일 내용을 전부 붙여넣고 **Run**.
-테이블 2개(profiles, progress)와 보안 정책이 한 번에 만들어져요.
+왼쪽 메뉴 **SQL Editor** → **New query** → 아래 순서대로 파일 내용을 전부 붙여넣고 **Run**.
+
+1. `supabase/schema.sql` — 테이블 2개(profiles, progress)와 보안 정책
+2. `supabase/admin.sql` — 관리자 기능 (처음 한 번만 관리자 아이디를 바꿔서 실행)
+3. `supabase/ranking.sql` — 랭킹 함수
+
+모두 여러 번 실행해도 안전해요.
 
 ### 3) 이메일 확인 끄기 ★ 꼭 필요해요
 
 **Authentication → Providers → Email** 에서 **Confirm email** 을 **꺼 주세요**.
 이 앱은 실제 이메일을 받지 않기 때문에, 켜져 있으면 가입은 되는데 로그인이 막혀요.
+
+### 3-1) 구글 로그인 켜기 (선택)
+
+1. **Authentication → Sign In / Providers → Google** 에서 Enable 을 켜요.
+2. Google Cloud Console에서 OAuth 클라이언트 ID·보안 비밀번호를 만들고, Supabase 화면의 안내대로 넣어요.
+3. **Authentication → URL Configuration** 의 Site URL에 `https://내-주소.vercel.app` 을,
+   Redirect URLs에 같은 주소를 넣어요.
+4. 처음 구글로 들어온 사람은 `user_` 로 시작하는 임시 아이디가 생겨요. 계정 화면에서 바꿀 수 있어요.
+
+### 3-2) 가입·비밀번호 메일 보내기 (Gmail)
+
+Supabase 기본 메일은 보내는 횟수가 적고, 받는 사람에게 "Supabase에서 보냄"으로 보여요.
+Gmail로 보내려면 **Project Settings → Authentication → SMTP Settings** 에 Gmail 앱 비밀번호를 넣어요.
+(앱 비밀번호는 Google 계정 보안 설정에서 만들어요. 일반 로그인 비밀번호는 쓰지 마세요.)
 
 ### 4) 키 넣기
 
@@ -328,3 +393,17 @@ video: "https://youtu.be/영상아이디",
 ### 영상을 빼고 싶으면
 
 `video:` 줄을 지우면 돼요. 그 레슨은 바로 문제로 들어가요.
+
+---
+
+## 12. 최근에 바뀐 것 (메모)
+
+- 랜딩 페이지·둘러보기 모드 추가, 하단 메뉴를 모든 주요 탭에서 고정.
+- 이모지 → SVG 아이콘, 얇은 스크롤바, 바깥 테두리 제거(작은 화면은 전체 화면).
+- 기록 탭(레벨 바, 정답률, 랭킹) 추가.
+- 구글 로그인 코드 추가 (Supabase 설정은 10번 섹션 참고).
+
+### 아직 안 된 것
+- Gmail 메일 설정은 Supabase 화면에서 직접 넣어야 해요(코드 아님).
+- 화면을 파일별로 쪼개는 동적 로딩은 다음 단계예요.
+- 참고 자료 링크와 서술형 채점은 자료·방식을 정한 뒤 추가해요.

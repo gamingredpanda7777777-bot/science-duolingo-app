@@ -22,7 +22,7 @@ export const SUBJECTS = [
   {
     id: "physics",
     title: "물리 · 운동과 에너지",
-    emoji: "🚗",
+    icon: "car",
     color: "var(--primary)",
     soft: "var(--primary-soft)",
     modules: [
@@ -54,7 +54,7 @@ export const SUBJECTS = [
   {
     id: "biology",
     title: "생명과학 · 자극과 반응",
-    emoji: "🧬",
+    icon: "dna",
     color: "var(--success)",
     soft: "var(--success-soft)",
     modules: [

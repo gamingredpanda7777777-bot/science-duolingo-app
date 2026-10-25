@@ -52,8 +52,43 @@ export async function getCurrentAccount() {
     .from("profiles")
     .select("code, username, created_at, is_admin")
     .eq("user_id", data.user.id)
+    .maybeSingle();
+  if (row) return toAccount(row);
+
+  // 구글 로그인으로 처음 들어온 사람: 임시 아이디로 프로필을 만든다.
+  // 사용자는 로그인 후 계정 화면에서 아이디를 바꿀 수 있다.
+  const provider = data.user.app_metadata?.provider;
+  if (!provider || provider === "email") return null;
+  const username = `user_${Math.random().toString(36).slice(2, 8)}`;
+  const { data: created } = await supabase
+    .from("profiles")
+    .insert({
+      user_id: data.user.id,
+      username,
+      login_email: data.user.email || syntheticEmail(username),
+    })
+    .select("code, username, created_at, is_admin")
     .single();
-  return toAccount(row);
+  return toAccount(created);
+}
+
+/* 구글 로그인: 구글 화면으로 이동했다가 이 앱으로 돌아온다 */
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) return { error: friendly(error, "구글 로그인을 시작하지 못했어요.") };
+  return { ok: true };
+}
+
+/* 랭킹: 아이디와 경험치만 보여준다 (이메일, 코드 등은 내보내지 않는다) */
+export async function fetchLeaderboard(limit = 20) {
+  const { data, error } = await supabase.rpc("leaderboard", { row_limit: limit });
+  if (error) return { error: friendly(error, "랭킹을 불러오지 못했어요.") };
+  return {
+    rows: (data || []).map((r) => ({ username: r.username, xp: r.xp, isMe: Boolean(r.is_me) })),
+  };
 }
 
 /* ---------- 가입 ---------- */

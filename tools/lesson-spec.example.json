@@ -1,0 +1,25 @@
+{
+  "module": "heredity",
+  "lessonId": "example_lesson_id",
+  "title": "예시 레슨",
+  "exportName": "EXAMPLE_QUESTIONS",
+  "fileName": "example-lesson.js",
+  "questions": [
+    {
+      "id": "example_q01",
+      "difficulty": "easy",
+      "stem": "예시 문제입니다. 알맞은 것은?",
+      "choices": ["가", "나", "다", "라"],
+      "answerIndex": 2,
+      "explanation": "다가 정답이에요."
+    },
+    {
+      "id": "example_q02",
+      "difficulty": "medium",
+      "type": "short_answer",
+      "stem": "예시 단답형 문제입니다.",
+      "answers": ["정답"],
+      "explanation": "정답은 정답이에요."
+    }
+  ]
+}

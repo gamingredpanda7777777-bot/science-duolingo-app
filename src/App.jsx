@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Home as HomeIcon,
   BookOpen,
@@ -12,6 +12,16 @@ import {
   Lock,
   Beaker,
   Dna,
+  Car,
+  Shuffle,
+  Trophy,
+  Sparkles,
+  Frown,
+  Medal,
+  Mail,
+  Key,
+  Microscope,
+  Play,
 } from "lucide-react";
 import { SUBJECTS, allQuestionsFlat } from "./data/subjects.js";
 import {
@@ -43,6 +53,8 @@ import {
   adminDeleteUser,
   fetchProgress,
   pushProgress,
+  signInWithGoogle,
+  fetchLeaderboard,
   formatCode,
 } from "./lib/accounts.js";
 
@@ -111,6 +123,9 @@ function Button({ children, onClick, variant = "solid", disabled, style }) {
   );
 }
 
+const TAB_SCREENS = ["home", "modules", "stats", "me", "admin"];
+const SUBJECT_ICONS = { car: Car, dna: Dna };
+
 function BottomNav({ active, onNav }) {
   const items = [
     { id: "home", label: "홈", icon: HomeIcon },
@@ -126,6 +141,8 @@ function BottomNav({ active, onNav }) {
         background: "#fff",
         padding: "8px 4px 14px",
         flexShrink: 0,
+        position: "relative",
+        zIndex: 2,
       }}
     >
       {items.map((it) => {
@@ -194,7 +211,7 @@ function DailyChallengeCard({ progress, onStart }) {
     return (
       <Card style={{ marginTop: 10, opacity: 0.7 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 22 }}>🎲</div>
+          <Shuffle size={22} strokeWidth={2} color="var(--primary)" style={{ flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 13 }}>오늘의 랜덤 10</div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
@@ -212,7 +229,7 @@ function DailyChallengeCard({ progress, onStart }) {
     return (
       <Card style={{ marginTop: 10, background: "var(--success-soft)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 22 }}>✅</div>
+          <Check size={22} strokeWidth={2} color="var(--success)" style={{ flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 13, color: "var(--success)" }}>
               오늘의 랜덤 10 완료!
@@ -229,7 +246,7 @@ function DailyChallengeCard({ progress, onStart }) {
   return (
     <Card style={{ marginTop: 10, background: "var(--primary-light)", cursor: "pointer" }} onClick={onStart}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ fontSize: 22 }}>🎲</div>
+        <Shuffle size={22} strokeWidth={2} color="var(--primary)" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--primary)" }}>오늘의 랜덤 10</div>
           <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
@@ -258,7 +275,7 @@ function HomeScreen({ progress, onOpenModules, onNav, onStartDaily }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
     <div className="scroll-col" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "14px 18px 0", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
-      <div style={{ fontWeight: 700, fontSize: 18 }}>안녕하세요! 👋</div>
+      <div style={{ fontWeight: 700, fontSize: 18 }}>안녕하세요!</div>
       <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>오늘도 문제 풀며 개념을 다져봐요.</div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
@@ -275,7 +292,7 @@ function HomeScreen({ progress, onOpenModules, onNav, onStartDaily }) {
             padding: "10px 0",
           }}
         >
-          <div style={{ fontSize: 20 }}>🏆</div>
+          <Trophy size={20} strokeWidth={2} color="var(--primary)" />
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--primary)" }}>Lv.{level}</div>
         </div>
         <div style={{ flex: 1, background: "var(--primary-light)", borderRadius: 16, padding: "10px 14px" }}>
@@ -339,7 +356,10 @@ function HomeScreen({ progress, onOpenModules, onNav, onStartDaily }) {
                 fontSize: 18,
               }}
             >
-              {subj.emoji}
+              {(() => {
+                const SubjIcon = SUBJECT_ICONS[subj.icon] || Beaker;
+                return <SubjIcon size={20} strokeWidth={2} color={subj.color} />;
+              })()}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{subj.title}</div>
@@ -378,7 +398,6 @@ function HomeScreen({ progress, onOpenModules, onNav, onStartDaily }) {
 
       <div style={{ height: 12 }} />
     </div>
-      <BottomNav active="home" onNav={onNav} />
     </div>
   );
 }
@@ -767,7 +786,7 @@ function QuizScreen({ lesson, onExit, onFinish }) {
         {answered && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <div style={{ textAlign: "center", marginTop: 10 }}>
-              <div style={{ fontSize: 44 }}>{isCorrect ? "🎉" : "😢"}</div>
+              <div>{isCorrect ? <Sparkles size={44} strokeWidth={1.8} color="var(--success)" /> : <Frown size={44} strokeWidth={1.8} color="var(--danger)" />}</div>
               <div
                 style={{
                   fontSize: 20,
@@ -895,7 +914,7 @@ function ResultScreen({ result, lesson, onBackToModules, onRetryWrong }) {
   return (
     <div className="scroll-col" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 18px 0", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 56 }}>🏅</div>
+        <div><Medal size={56} strokeWidth={1.8} color="var(--primary)" /></div>
         <div style={{ fontWeight: 800, fontSize: 20, color: "var(--primary)", marginTop: 4 }}>
           {lesson.title} 완료!
         </div>
@@ -920,7 +939,7 @@ function ResultScreen({ result, lesson, onBackToModules, onRetryWrong }) {
               borderRadius: 12,
             }}
           >
-            📈 {scorePct}%
+            <TrendingUp size={13} strokeWidth={2.4} style={{ verticalAlign: "-2px", marginRight: 4 }} />{scorePct}%
           </div>
         </div>
       </Card>
@@ -941,7 +960,7 @@ function ResultScreen({ result, lesson, onBackToModules, onRetryWrong }) {
                 fontSize: 12,
               }}
             >
-              ✓
+              <Check size={14} strokeWidth={3} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 600 }}>정답</span>
           </div>
@@ -962,7 +981,7 @@ function ResultScreen({ result, lesson, onBackToModules, onRetryWrong }) {
                 fontSize: 12,
               }}
             >
-              ✕
+              <X size={14} strokeWidth={3} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 600 }}>오답</span>
           </div>
@@ -1037,7 +1056,7 @@ function Notice({ text, tone = "danger" }) {
   );
 }
 
-function AuthScreen({ onAuthed }) {
+function AuthScreen({ onAuthed, onBack }) {
   const [mode, setMode] = useState("login"); // login | signup | forgot
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
@@ -1048,6 +1067,12 @@ function AuthScreen({ onAuthed }) {
   const [busy, setBusy] = useState(false);
   const [newAccount, setNewAccount] = useState(null);
   const [showSetup, setShowSetup] = useState(false);
+
+  async function handleGoogle() {
+    setError("");
+    const res = await signInWithGoogle();
+    if (res.error) setError(res.error);
+  }
 
   async function handleSubmit() {
     if (busy) return;
@@ -1102,7 +1127,7 @@ function AuthScreen({ onAuthed }) {
         style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
       >
         <div style={{ textAlign: "center", marginTop: 30 }}>
-          <div style={{ fontSize: 40 }}>📮</div>
+          <div><Mail size={40} strokeWidth={1.8} color="var(--primary)" /></div>
           <div style={{ fontWeight: 800, fontSize: 18, marginTop: 8 }}>메일을 보냈어요</div>
         </div>
         <Card style={{ marginTop: 18 }}>
@@ -1136,7 +1161,7 @@ function AuthScreen({ onAuthed }) {
     return (
       <div className="scroll-col" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 44 }}>🎉</div>
+          <div><Sparkles size={44} strokeWidth={1.8} color="var(--success)" /></div>
           <div style={{ fontWeight: 800, fontSize: 19, marginTop: 6 }}>계정이 만들어졌어요!</div>
         </div>
 
@@ -1174,8 +1199,18 @@ function AuthScreen({ onAuthed }) {
 
   return (
     <div className="scroll-col" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
+      {onBack && (
+        <div style={{ marginBottom: 6 }}>
+          <div
+            onClick={onBack}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 700, color: "var(--text-2)", cursor: "pointer" }}
+          >
+            <ChevronLeft size={16} /> 처음으로
+          </div>
+        </div>
+      )}
       <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <div style={{ fontSize: 38 }}>🧪</div>
+        <Beaker size={38} strokeWidth={1.8} color="var(--primary)" />
         <div style={{ fontWeight: 800, fontSize: 20, marginTop: 4 }}>과학 학습 프로그램</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
           {mode === "forgot"
@@ -1310,6 +1345,14 @@ function AuthScreen({ onAuthed }) {
               {busy ? "처리 중..." : mode === "login" ? "로그인" : "계정 만들기"}
             </Button>
           </div>
+
+          {mode !== "forgot" && (
+            <div style={{ marginTop: 10 }}>
+              <Button variant="outline" onClick={handleGoogle} disabled={busy || !serverMode}>
+                Google로 계속하기{serverMode ? "" : " (서버 연결 필요)"}
+              </Button>
+            </div>
+          )}
 
           {mode === "login" && serverMode && (
             <div
@@ -1681,7 +1724,7 @@ function ResetPasswordScreen({ onDone }) {
       style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
     >
       <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <div style={{ fontSize: 38 }}>🔑</div>
+        <div><Key size={38} strokeWidth={1.8} color="var(--primary)" /></div>
         <div style={{ fontWeight: 800, fontSize: 19, marginTop: 6 }}>새 비밀번호 정하기</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
           앞으로 쓸 비밀번호를 입력해 주세요
@@ -1813,7 +1856,7 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav, on
       <TopBar title="마이" />
       <div style={{ flex: 1, padding: "0 18px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
         <Card style={{ marginTop: 4, textAlign: "center" }}>
-          <div style={{ fontSize: 32 }}>🧑‍🔬</div>
+          <div><Microscope size={32} strokeWidth={1.8} color="var(--primary)" /></div>
           <div style={{ fontWeight: 800, fontSize: 17, marginTop: 4 }}>{account.id}</div>
           <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
             Lv.{level} · 경험치 {progress.xp}
@@ -2011,7 +2054,222 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav, on
 
         <div style={{ height: 18 }} />
       </div>
-      <BottomNav active="me" onNav={onNav} />
+    </div>
+  );
+}
+
+/* ============================================================
+   랜딩 · 둘러보기 · 기록 화면
+   ============================================================ */
+
+function LandingScreen({ onLogin, onGuest }) {
+  const demo = useMemo(
+    () =>
+      allQuestionsFlat().find(
+        (q) => Array.isArray(q.choices) && q.choices.length === 4 && q.difficulty === "easy"
+      ),
+    []
+  );
+  const [picked, setPicked] = useState(null);
+  const features = [
+    { icon: Play, title: "개념 영상", text: "핵심 개념을 영상으로 먼저 봐요." },
+    { icon: Shuffle, title: "오늘의 랜덤 10", text: "매일 섞인 문제 10개로 복습해요." },
+    { icon: Trophy, title: "레벨과 랭킹", text: "풀수록 경험치가 쌓이고 순위가 올라가요." },
+  ];
+
+  return (
+    <div
+      className="scroll-col"
+      style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+    >
+      <div style={{ textAlign: "center", marginTop: 6 }}>
+        <Beaker size={40} strokeWidth={1.8} color="var(--primary)" />
+        <div style={{ fontWeight: 800, fontSize: 22, marginTop: 8 }}>과학 학습 프로그램</div>
+        <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 4 }}>문제를 풀면서 개념을 다져요</div>
+      </div>
+
+      {demo && (
+        <Card style={{ marginTop: 22 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>체험 문제</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>{demo.stem}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+            {demo.choices.map((c, i) => {
+              const isAnswer = i === demo.answerIndex;
+              const tone = picked === null ? null : isAnswer ? "ok" : picked === i ? "bad" : null;
+              const border = tone === "ok" ? "var(--success)" : tone === "bad" ? "var(--danger)" : "var(--line)";
+              const bg = tone === "ok" ? "var(--success-soft)" : tone === "bad" ? "var(--danger-soft)" : "#fff";
+              return (
+                <button
+                  key={i}
+                  disabled={picked !== null}
+                  onClick={() => setPicked(i)}
+                  style={{
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    border: `1.5px solid ${border}`,
+                    background: bg,
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    color: "var(--text)",
+                    cursor: picked === null ? "pointer" : "default",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ flex: 1 }}>{c}</span>
+                  {tone === "ok" && <Check size={16} color="var(--success)" strokeWidth={3} />}
+                  {tone === "bad" && <X size={16} color="var(--danger)" strokeWidth={3} />}
+                </button>
+              );
+            })}
+          </div>
+          {picked !== null && (
+            <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>{demo.explanation}</div>
+          )}
+        </Card>
+      )}
+
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        {features.map((f) => {
+          const Icon = f.icon;
+          return (
+            <Card key={f.title}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div
+                  style={{ width: 38, height: 38, borderRadius: 12, background: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <Icon size={18} color="var(--primary)" strokeWidth={2} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{f.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>{f.text}</div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+        <Button onClick={onLogin}>로그인 · 회원가입</Button>
+        <Button variant="outline" onClick={onGuest}>로그인 없이 둘러보기</Button>
+      </div>
+      <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8, marginBottom: 20 }}>
+        둘러보기 기록은 이 기기에만 저장돼요.
+      </div>
+    </div>
+  );
+}
+
+function GuestPanel({ onLogin }) {
+  return (
+    <div
+      className="scroll-col"
+      style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0 }}
+    >
+      <Card style={{ textAlign: "center" }}>
+        <User size={34} color="var(--primary)" strokeWidth={1.8} />
+        <div style={{ fontWeight: 800, fontSize: 17, marginTop: 8 }}>둘러보는 중이에요</div>
+        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6, lineHeight: 1.6 }}>
+          기록은 이 기기에만 저장돼요. 로그인하면 기기를 바꿔도 기록이 이어져요.
+        </div>
+      </Card>
+      <div style={{ marginTop: 16 }}>
+        <Button onClick={onLogin}>로그인 · 회원가입</Button>
+      </div>
+    </div>
+  );
+}
+
+function StatTile({ label, value }) {
+  return (
+    <div style={{ flex: 1, background: "var(--card)", borderRadius: 16, padding: "12px 8px", textAlign: "center", border: "1px solid var(--line)" }}>
+      <div style={{ fontWeight: 800, fontSize: 16 }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+
+function StatsScreen({ progress }) {
+  const [board, setBoard] = useState(null);
+  const [boardError, setBoardError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    fetchLeaderboard().then((res) => {
+      if (!alive) return;
+      if (res.error) setBoardError(res.error);
+      else setBoard(res.rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const level = levelOf(progress.xp);
+  const into = xpIntoLevel(progress.xp);
+  const stats = Object.values(progress.questionStats || {});
+  const attempts = stats.reduce((sum, s) => sum + (s.attempts || 0), 0);
+  const wrong = stats.reduce((sum, s) => sum + (s.wrongCount || 0), 0);
+  const accuracy = attempts ? Math.round(((attempts - wrong) / attempts) * 100) : 0;
+
+  return (
+    <div
+      className="scroll-col"
+      style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 18px 0", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
+    >
+      <div style={{ fontWeight: 800, fontSize: 18 }}>내 기록</div>
+
+      <Card style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <span style={{ fontWeight: 800, fontSize: 22, color: "var(--primary)" }}>Lv.{level}</span>
+          <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+            {progress.xp} XP · 다음 레벨까지 {100 - into} XP
+          </span>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <ProgressBar pct={into} />
+        </div>
+      </Card>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <StatTile label="완료한 레슨" value={progress.completedLessons.length} />
+        <StatTile label="정답률" value={`${accuracy}%`} />
+        <StatTile label="연속 학습" value={`${progress.streak}일`} />
+      </div>
+
+      <Card style={{ marginTop: 10, marginBottom: 12 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+          <Medal size={16} color="var(--primary)" /> 랭킹
+        </div>
+        {boardError && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>{boardError}</div>}
+        {!boardError && !board && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>불러오는 중...</div>}
+        {board && board.length === 0 && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>아직 기록이 없어요.</div>}
+        {board &&
+          board.map((r, i) => (
+            <div
+              key={`${r.username}-${i}`}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "9px 0",
+                borderTop: "1px solid var(--line)",
+                fontSize: 13,
+                fontWeight: r.isMe ? 800 : 500,
+                color: r.isMe ? "var(--primary)" : "var(--text)",
+              }}
+            >
+              <span>
+                {i + 1}. {r.username}
+                {r.isMe ? " (나)" : ""}
+              </span>
+              <span style={{ fontSize: 12 }}>{r.xp} XP</span>
+            </div>
+          ))}
+      </Card>
     </div>
   );
 }
@@ -2026,6 +2284,7 @@ export default function ScienceDuolingoApp() {
   const [lastResult, setLastResult] = useState(null);
   const [progress, setProgress] = useState(() => loadProgress(null));
   const [retryMode, setRetryMode] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   // 서버 기록과 기기 기록 중 더 많이 진행된 쪽을 쓴다
   async function resolveProgress(acc) {
@@ -2064,12 +2323,20 @@ export default function ScienceDuolingoApp() {
   useEffect(() => {
     if (!account) return;
     saveProgress(progress, account.code);
-    if (serverMode) pushProgress(progress);
+    if (serverMode && !account.guest) pushProgress(progress);
   }, [progress, account]);
 
   async function handleAuthed(acc) {
     setAccount(acc);
     setProgress(await resolveProgress(acc));
+    setShowAuth(false);
+    setScreen("home");
+  }
+
+  /* 로그인 없이 둘러보기: 기록은 이 기기에만 "GUEST" 이름으로 남는다 */
+  function startGuest() {
+    setAccount({ code: "GUEST", id: "게스트", createdAt: null, isAdmin: false, guest: true });
+    setProgress(loadProgress("GUEST"));
     setScreen("home");
   }
 
@@ -2080,11 +2347,12 @@ export default function ScienceDuolingoApp() {
     }
     else if (tab === "me") setScreen("me");
     else if (tab === "modules") openModules("biology");
-    else if (tab === "stats") setScreen("home"); // 기록 화면은 아직 준비 중
+    else if (tab === "stats") setScreen("stats");
   }
 
   async function handleLogout() {
     await logout();
+    setShowAuth(false);
     setAccount(null);
     setProgress(loadProgress(null));
     setScreen("home");
@@ -2166,14 +2434,24 @@ export default function ScienceDuolingoApp() {
       }}
     >
       <style>{`
-        .phone-frame { height: min(720px, calc(100vh - 48px)); }
+        .phone-frame { height: min(760px, calc(100vh - 32px)); }
         /* 세로 flex 안의 요소는 공간이 모자라면 찌그러진다.
            그러면 넘치지 않아 스크롤이 생기지 않는다. 찌그러짐을 막는다. */
         .scroll-col > * { flex-shrink: 0; }
         /* 모바일 주소창이 차지하는 높이까지 반영되는 단위 */
         @supports (height: 100dvh) {
-          .phone-frame { height: min(720px, calc(100dvh - 48px)); }
+          .phone-frame { height: min(760px, calc(100dvh - 32px)); }
         }
+        /* 작은 화면에서는 테두리 없이 전체 화면을 쓴다 */
+        @media (max-width: 480px) {
+          .phone-frame { width: 100% !important; height: 100vh; height: 100dvh; }
+        }
+        /* 스크롤바: 얇고 연한 기본 디자인으로 교체 */
+        .scroll-col { scrollbar-width: thin; scrollbar-color: #cfd3e6 transparent; }
+        .scroll-col::-webkit-scrollbar { width: 6px; }
+        .scroll-col::-webkit-scrollbar-track { background: transparent; }
+        .scroll-col::-webkit-scrollbar-thumb { background: #cfd3e6; border-radius: 999px; }
+        .scroll-col::-webkit-scrollbar-thumb:hover { background: #aab0cf; }
       `}</style>
       <div
         className="phone-frame"
@@ -2181,8 +2459,8 @@ export default function ScienceDuolingoApp() {
           width: 380,
           maxWidth: "100%",
           background: "var(--bg)",
-          borderRadius: 32,
-          boxShadow: "0 12px 32px rgba(31,32,48,.12)",
+          borderRadius: 0,
+          boxShadow: "none",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -2214,7 +2492,12 @@ export default function ScienceDuolingoApp() {
           />
         )}
 
-        {!booting && !recovering && !account && <AuthScreen onAuthed={handleAuthed} />}
+        {!booting && !recovering && !account && !showAuth && (
+          <LandingScreen onLogin={() => setShowAuth(true)} onGuest={startGuest} />
+        )}
+        {!booting && !recovering && !account && showAuth && (
+          <AuthScreen onAuthed={handleAuthed} onBack={() => setShowAuth(false)} />
+        )}
 
         {!booting && !recovering && account && screen === "home" && (
           <HomeScreen
@@ -2224,7 +2507,19 @@ export default function ScienceDuolingoApp() {
             onStartDaily={startDailyChallenge}
           />
         )}
-        {!booting && !recovering && account && screen === "me" && (
+        {!booting && !recovering && account && account.guest && screen === "me" && (
+          <GuestPanel
+            onLogin={async () => {
+              await logout();
+              setAccount(null);
+              setShowAuth(true);
+            }}
+          />
+        )}
+        {!booting && !recovering && account && screen === "stats" && (
+          <StatsScreen progress={progress} />
+        )}
+        {!booting && !recovering && account && !account.guest && screen === "me" && (
           <AccountScreen
             account={account}
             progress={progress}
@@ -2269,6 +2564,12 @@ export default function ScienceDuolingoApp() {
             lesson={activeLesson}
             onBackToModules={() => setScreen(activeLesson.isDaily ? "home" : "modules")}
             onRetryWrong={retryWrong}
+          />
+        )}
+        {!booting && !recovering && account && TAB_SCREENS.includes(screen) && (
+          <BottomNav
+            active={screen === "modules" ? "modules" : screen === "stats" ? "stats" : screen === "me" || screen === "admin" ? "me" : "home"}
+            onNav={handleNav}
           />
         )}
       </div>
