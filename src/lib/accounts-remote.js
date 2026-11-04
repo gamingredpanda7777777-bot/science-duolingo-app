@@ -356,6 +356,16 @@ export async function setRecoveryEmail(code, email) {
   const mailError = validateEmail(value);
   if (mailError) return { error: mailError };
 
+  // 1) 서버 함수로 등록: 가짜 이메일로 가입한 계정도 바꿀 수 있다
+  const viaServer = await supabase.functions
+    .invoke("set-email", { body: { email: value } })
+    .catch((error) => ({ data: null, error }));
+  if (!viaServer.error) {
+    if (viaServer.data?.error) return { error: viaServer.data.error };
+    return { ok: true };
+  }
+
+  // 2) 서버 함수가 아직 없을 때의 예전 방식
   const { data, error } = await supabase.auth.updateUser({ email: value });
   if (error) {
     const msg = String(error.message || "");
@@ -365,7 +375,6 @@ export async function setRecoveryEmail(code, email) {
   }
 
   // 확인 메일이 필요한 설정이면, 링크를 누르기 전까지 이메일은 바뀌지 않는다.
-  // 이때 프로필의 로그인용 이메일을 먼저 바꾸면 아이디 로그인이 막히므로 그대로 둔다.
   const applied = (data?.user?.email || "").toLowerCase() === value.toLowerCase();
   if (!applied) return { pending: true };
 
