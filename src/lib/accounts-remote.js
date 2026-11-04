@@ -158,15 +158,30 @@ export async function login(idOrCode, password) {
   const identifier = String(idOrCode || "").trim();
   if (!identifier) return { error: "아이디 또는 고유 코드를 입력해 주세요." };
 
-  // 아이디/코드 → 내부 이메일 찾기
-  const { data: email, error: lookupError } = await supabase.rpc("login_email_for", {
-    identifier,
-  });
-  if (lookupError) return { error: friendly(lookupError, "로그인하지 못했어요.") };
-  if (!email) return { error: "아이디 또는 고유 코드를 찾을 수 없어요." };
+  // 1) 서버 함수로 로그인: 이메일 주소가 브라우저로 오지 않는다
+  const viaServer = await supabase.functions
+    .invoke("login", { body: { identifier, password } })
+    .catch((error) => ({ data: null, error }));
 
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-  if (signInError) return { error: friendly(signInError, "로그인하지 못했어요.") };
+  if (!viaServer.error) {
+    const data = viaServer.data || {};
+    if (data.error) return { error: data.error };
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+    if (sessionError) return { error: friendly(sessionError, "로그인하지 못했어요.") };
+  } else {
+    // 2) 서버 함수가 아직 배포되지 않은 경우를 위한 예전 방식
+    const { data: email, error: lookupError } = await supabase.rpc("login_email_for", {
+      identifier,
+    });
+    if (lookupError) return { error: friendly(lookupError, "로그인하지 못했어요.") };
+    if (!email) return { error: "아이디 또는 비밀번호가 맞지 않아요." };
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) return { error: friendly(signInError, "로그인하지 못했어요.") };
+  }
 
   const account = await getCurrentAccount();
   if (!account) return { error: "프로필을 불러오지 못했어요." };
