@@ -28,7 +28,7 @@ export const SHORT_ANSWER_QUESTIONS = [
     type: "short_answer",
     difficulty: "medium",
     stem: "귀에서 고막의 진동을 증폭하여 달팽이관으로 전달하는 구조는?",
-    answers: ["귓속뼈", "귓속 뼈"],
+    answers: ["귓속뼈","귓속 뼈","이소골"],
     explanation:
       "고막이 진동하면 그 진동은 귓속뼈를 지나면서 증폭되어 달팽이관으로 전달돼요. 달팽이관은 증폭이 아니라 자극을 받아들이는 곳이에요.",
   },
@@ -37,7 +37,7 @@ export const SHORT_ANSWER_QUESTIONS = [
     type: "short_answer",
     difficulty: "medium",
     stem: "혀 표면 돌기의 옆면에 있으며, 그 안에 맛세포가 모여 있는 구조는?",
-    answers: ["맛봉오리"],
+    answers: ["맛봉오리","미뢰"],
     explanation:
       "맛봉오리는 혀 표면 돌기의 옆면에 여러 개 있고, 그 안에 맛세포가 모여 있어요. 액체 물질이 맛세포를 자극하면 미각 신경을 통해 뇌로 전달돼요.",
   },

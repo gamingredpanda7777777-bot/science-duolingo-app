@@ -44,7 +44,7 @@ export const HEREDITY_HUMAN_QUESTIONS = [
     difficulty: "medium",
     type: "short_answer",
     stem: "염색체의 수와 모양을 분석하면 진단할 수 있는, 염색체 이상으로 발생하는 병을 무엇이라고 하는가?",
-    answers: ["유전병"],
+    answers: ["유전병","유전 질환","유전질환"],
     explanation:
       "염색체의 수와 모양을 분석하면 염색체 이상으로 발생할 수 있는 유전병을 진단할 수 있어요.",
   },
@@ -96,7 +96,7 @@ export const HEREDITY_HUMAN_QUESTIONS = [
     difficulty: "medium",
     type: "short_answer",
     stem: "부모의 DNA와 자녀의 DNA를 비교하면 무엇을 확인할 수 있는가? (두 글자 또는 세 글자로 답하세요)",
-    answers: ["유전", "유전 여부", "유전여부"],
+    answers: ["유전","유전 여부","유전여부","유전되었는지","유전 되었는지","유전 확인"],
     explanation:
       "부모와 자녀의 DNA를 비교하면 특정 형질이 자녀에게 유전되었는지 확인할 수 있어요.",
   },

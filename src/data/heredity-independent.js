@@ -7,7 +7,7 @@ export const HEREDITY_INDEPENDENT_QUESTIONS = [
     difficulty: "easy",
     type: "short_answer",
     stem: "두 쌍 이상의 대립유전자가 서로 영향을 미치지 않고 각각 분리의 법칙에 따라 유전되는 원리를 무엇이라고 하는가?",
-    answers: ["독립의 법칙", "독립법칙"],
+    answers: ["독립의 법칙","독립법칙","독립 법칙"],
     explanation:
       "두 쌍 이상의 대립유전자가 서로 영향을 미치지 않고 각각 분리의 법칙에 따라 유전되는 것을 독립의 법칙이라고 해요.",
   },

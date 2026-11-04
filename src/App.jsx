@@ -589,7 +589,7 @@ function LessonIntroScreen({ lesson, onStart, onBack }) {
 function normalizeAnswer(s) {
   return String(s || "")
     .replace(/\s+/g, "")
-    .replace(/[.,!?·'"()]/g, "")
+    .replace(/[.,!?·'"():\-]/g, "")
     .toLowerCase();
 }
 

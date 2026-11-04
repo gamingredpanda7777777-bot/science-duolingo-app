@@ -86,7 +86,7 @@ export const HEREDITY_MENDEL_QUESTIONS = [
     difficulty: "medium",
     type: "short_answer",
     stem: "쌍을 이루고 있던 대립 유전자가 감수 분열 때 분리되어 서로 다른 생식세포로 들어가는 유전 원리를 무엇이라고 하는가?",
-    answers: ["분리의 법칙", "분리법칙"],
+    answers: ["분리의 법칙","분리법칙","분리 법칙"],
     explanation:
       "쌍을 이루고 있던 대립 유전자가 감수 분열 때 분리되어 서로 다른 생식세포로 들어가는 것을 분리의 법칙이라고 해요.",
   },
