@@ -50,17 +50,25 @@ export async function getCurrentAccount() {
   if (!data?.user) return null;
   const { data: row } = await supabase
     .from("profiles")
-    .select("code, username, created_at, is_admin")
+    .select("code, username, created_at, is_admin, login_email")
     .eq("user_id", data.user.id)
     .maybeSingle();
-  if (row) return toAccount(row);
+  if (row) {
+    // 이메일 변경 확인 링크를 누른 뒤에는 인증 쪽 이메일만 바뀌어 있다.
+    // 아이디 로그인이 계속 되도록 프로필의 로그인용 이메일을 맞춰 둔다.
+    const authEmail = data.user.email;
+    if (authEmail && row.login_email !== authEmail) {
+      await supabase.from("profiles").update({ login_email: authEmail }).eq("user_id", data.user.id);
+    }
+    return toAccount(row);
+  }
 
   // 구글 로그인으로 처음 들어온 사람: 임시 아이디로 프로필을 만든다.
   // 사용자는 로그인 후 계정 화면에서 아이디를 바꿀 수 있다.
   const provider = data.user.app_metadata?.provider;
   if (!provider || provider === "email") return null;
   const username = `user_${Math.random().toString(36).slice(2, 8)}`;
-  const { data: created } = await supabase
+  const { data: created, error: createError } = await supabase
     .from("profiles")
     .insert({
       user_id: data.user.id,
@@ -69,6 +77,9 @@ export async function getCurrentAccount() {
     })
     .select("code, username, created_at, is_admin")
     .single();
+  if (createError) {
+    throw new Error(`구글 계정으로 프로필을 만들지 못했어요. (${createError.message})`);
+  }
   return toAccount(created);
 }
 
@@ -330,11 +341,24 @@ export async function setRecoveryEmail(code, email) {
   const mailError = validateEmail(value);
   if (mailError) return { error: mailError };
 
-  const { error } = await supabase.auth.updateUser({ email: value });
-  if (error) return { error: friendly(error, "이메일을 등록하지 못했어요.") };
+  const { data, error } = await supabase.auth.updateUser({ email: value });
+  if (error) {
+    const msg = String(error.message || "");
+    if (/already|registered|exists/i.test(msg)) return { error: "이미 다른 계정이 쓰고 있는 이메일이에요." };
+    if (/rate limit|too many/i.test(msg)) return { error: "메일 발송 횟수 제한에 걸렸어요. 잠시 후 다시 시도해 주세요." };
+    return { error: `이메일을 등록하지 못했어요. (${msg || "알 수 없는 오류"})` };
+  }
 
-  // 로그인용 이메일도 같이 맞춰 둔다
-  await supabase.from("profiles").update({ login_email: value }).eq("code", code);
+  // 확인 메일이 필요한 설정이면, 링크를 누르기 전까지 이메일은 바뀌지 않는다.
+  // 이때 프로필의 로그인용 이메일을 먼저 바꾸면 아이디 로그인이 막히므로 그대로 둔다.
+  const applied = (data?.user?.email || "").toLowerCase() === value.toLowerCase();
+  if (!applied) return { pending: true };
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ login_email: value })
+    .eq("code", code);
+  if (profileError) return { error: `이메일은 바뀌었지만 프로필에 저장하지 못했어요. (${profileError.message})` };
   return { ok: true };
 }
 

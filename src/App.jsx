@@ -1794,6 +1794,14 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav, on
         setMsg({ text: res.error, tone: "danger" });
         return;
       }
+      if (res.pending) {
+        setPanel(null);
+        setMsg({
+          text: `${newEmail.trim()} 로 확인 메일을 보냈어요. 메일의 링크를 눌러야 등록이 끝나요. 메일이 오지 않으면 스팸함을 확인해 주세요.`,
+          tone: "success",
+        });
+        return;
+      }
       setRecoveryEmailState(newEmail.trim());
       setNewEmail("");
       setPanel(null);
@@ -2062,7 +2070,23 @@ function AccountScreen({ account, progress, onAccountChange, onLogout, onNav, on
    랜딩 · 둘러보기 · 기록 화면
    ============================================================ */
 
-function LandingScreen({ onLogin, onGuest }) {
+/* 구글 로그인 등에서 실패하면 주소 뒤에 error_description 이 붙어서 돌아온다.
+   읽어서 화면에 보여주고, 주소창은 깨끗하게 지운다. */
+function readAuthErrorFromUrl() {
+  try {
+    const params = new URLSearchParams(
+      (window.location.hash || "").replace(/^#/, "") + "&" + (window.location.search || "").replace(/^\?/, "")
+    );
+    const desc = params.get("error_description") || params.get("error");
+    if (!desc) return "";
+    window.history.replaceState(null, "", window.location.pathname);
+    return `로그인에 실패했어요: ${desc.replace(/\+/g, " ")}`;
+  } catch {
+    return "";
+  }
+}
+
+function LandingScreen({ notice, onLogin, onGuest }) {
   const demo = useMemo(
     () =>
       allQuestionsFlat().find(
@@ -2082,6 +2106,7 @@ function LandingScreen({ onLogin, onGuest }) {
       className="scroll-col"
       style={{ flex: 1, display: "flex", flexDirection: "column", padding: "26px 20px", overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}
     >
+      <Notice text={notice} />
       <div style={{ textAlign: "center", marginTop: 6 }}>
         <Beaker size={40} strokeWidth={1.8} color="var(--primary)" />
         <div style={{ fontWeight: 800, fontSize: 22, marginTop: 8 }}>과학 학습 프로그램</div>
@@ -2285,6 +2310,7 @@ export default function ScienceDuolingoApp() {
   const [progress, setProgress] = useState(() => loadProgress(null));
   const [retryMode, setRetryMode] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [bootNotice, setBootNotice] = useState("");
 
   // 서버 기록과 기기 기록 중 더 많이 진행된 쪽을 쓴다
   async function resolveProgress(acc) {
@@ -2306,10 +2332,14 @@ export default function ScienceDuolingoApp() {
       try {
         // 메일 링크로 들어온 경우엔 새 비밀번호를 먼저 정하게 한다
         if (isRecoveryLink()) return;
+        const urlError = readAuthErrorFromUrl();
+        if (urlError && alive) setBootNotice(urlError);
         const acc = await getCurrentAccount();
         if (!alive || !acc) return;
         setAccount(acc);
         setProgress(await resolveProgress(acc));
+      } catch (err) {
+        if (alive) setBootNotice(err?.message || "로그인 정보를 불러오지 못했어요.");
       } finally {
         if (alive) setBooting(false);
       }
@@ -2514,7 +2544,7 @@ export default function ScienceDuolingoApp() {
         )}
 
         {!booting && !recovering && !account && !showAuth && (
-          <LandingScreen onLogin={() => setShowAuth(true)} onGuest={startGuest} />
+          <LandingScreen notice={bootNotice} onLogin={() => setShowAuth(true)} onGuest={startGuest} />
         )}
         {!booting && !recovering && !account && showAuth && (
           <AuthScreen onAuthed={handleAuthed} onBack={() => setShowAuth(false)} />
